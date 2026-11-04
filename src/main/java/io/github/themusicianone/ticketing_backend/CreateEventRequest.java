@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
 public record CreateEventRequest(@NotBlank @Size(max=200) String name,
-                                 @NotNull @Future Instant startsAt) {
+                                 @NotNull @Future Instant startsAt,
+                                 @NotNull Long venueId) {
 
 }

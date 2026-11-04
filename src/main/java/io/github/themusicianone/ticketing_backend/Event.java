@@ -11,7 +11,9 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    //private Long venueId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name="venue_id")
+    private Venue venue;
 
     private String name;
 
@@ -25,7 +27,8 @@ public class Event {
         // JPA needs an empty constructor to create objects from database rows
     }
 
-    public Event(String name, Instant startsAt) {
+    public Event(String name, Instant startsAt, Venue venue) {
+        this.venue = venue;
         this.name = name;
         this.startsAt = startsAt;
     }
@@ -45,10 +48,8 @@ public class Event {
         return createdAt;
     }
 
-    /*
-    public Long getVenueId() {
-        return venueId;
+    public Venue getVenue() {
+        return venue;
     }
 
-     */
 }

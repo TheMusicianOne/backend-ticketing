@@ -16,14 +16,15 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class EventControllerTest {
 
+    private static final Instant FUTURE_DATE = Instant.parse("2099-06-12T20:00:00Z");
+
     @Autowired
     private RestTestClient client;
 
     @Test
     void createdEventCanBeFetched() {
-        CreateEventRequest request = new CreateEventRequest(
-                "Test concert",
-                Instant.parse("2099-06-12T20:00:00Z"));
+        Long venueId = createVenue();
+        CreateEventRequest request = new CreateEventRequest("Test concert", FUTURE_DATE, venueId);
 
         URI location = client.post()
                 .uri("/events")
@@ -32,6 +33,8 @@ class EventControllerTest {
                 .exchange()
                 .expectStatus().isCreated()
                 .expectBody()
+                .jsonPath("$.name").isEqualTo("Test concert")
+                .jsonPath("$.venueId").isEqualTo(venueId)
                 .returnResult()
                 .getResponseHeaders()
                 .getLocation();
@@ -41,20 +44,42 @@ class EventControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.name").isEqualTo("Test concert");
+                .jsonPath("$.name").isEqualTo("Test concert")
+                .jsonPath("$.venueId").isEqualTo(venueId);
     }
 
     @Test
     void blankNameIsRejected() {
-        CreateEventRequest request = new CreateEventRequest(
-                "",
-                Instant.parse("2099-06-12T20:00:00Z"));
+        CreateEventRequest request = new CreateEventRequest("", FUTURE_DATE, createVenue());
 
-        client.post()
-                .uri("/events")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .exchange()
+        postEvent(request)
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void pastDateIsRejected() {
+        CreateEventRequest request = new CreateEventRequest(
+                "Test concert",
+                Instant.parse("2020-01-01T20:00:00Z"),
+                createVenue());
+
+        postEvent(request)
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void missingVenueIsRejected() {
+        CreateEventRequest request = new CreateEventRequest("Test concert", FUTURE_DATE, null);
+
+        postEvent(request)
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void unknownVenueIsRejected() {
+        CreateEventRequest request = new CreateEventRequest("Test concert", FUTURE_DATE, 999999L);
+
+        postEvent(request)
                 .expectStatus().isBadRequest();
     }
 
@@ -66,4 +91,25 @@ class EventControllerTest {
                 .expectStatus().isNotFound();
     }
 
+    private RestTestClient.ResponseSpec postEvent(CreateEventRequest request) {
+        return client.post()
+                .uri("/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .exchange();
+    }
+
+    private Long createVenue() {
+        VenueResponse venue = client.post()
+                .uri("/venues")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new CreateVenueRequest("Test venue", "Amsterdam"))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(VenueResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        return venue.id();
+    }
 }

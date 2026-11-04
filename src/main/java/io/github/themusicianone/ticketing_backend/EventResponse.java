@@ -2,8 +2,8 @@ package io.github.themusicianone.ticketing_backend;
 
 import java.time.Instant;
 
-record EventResponse(Long id, String name, Instant startsAt) {
+record EventResponse(Long id, String name, Instant startsAt, Long venueId) {
     static EventResponse from(Event event) {
-        return new EventResponse(event.getId(), event.getName(), event.getStartsAt());
+        return new EventResponse(event.getId(), event.getName(), event.getStartsAt(), event.getVenue().getId());
     }
 }
