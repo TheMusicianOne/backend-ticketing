@@ -1,0 +1,14 @@
+services:
+  postgres:                   # a name for this container
+    image: postgres:17        # the PostgreSQL version to run
+    environment:              # creates the database and login on first start
+      POSTGRES_DB: ticketing
+      POSTGRES_USER: ticketing
+      POSTGRES_PASSWORD: ticketing
+    ports:
+      - "5432:5432"           # lets your app reach the database
+    volumes:
+      - postgres-data:/var/lib/postgresql/data   # keeps data after restarts
+
+volumes:
+  postgres-data:
