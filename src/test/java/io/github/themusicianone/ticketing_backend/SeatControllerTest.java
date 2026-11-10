@@ -215,4 +215,95 @@ class SeatControllerTest {
                 .body(request)
                 .exchange();
     }
+
+
+    @Test
+    void seatsArePaginated() {
+        Long eventId = createEventWithSeats(3, 10);
+
+        client.get()
+                .uri("/events/{eventId}/seats?page=0&size=10", eventId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content.length()").isEqualTo(10)
+                .jsonPath("$.page").isEqualTo(0)
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.totalElements").isEqualTo(30)
+                .jsonPath("$.totalPages").isEqualTo(3);
+    }
+
+    @Test
+    void lastPageContainsLastRow() {
+        Long eventId = createEventWithSeats(3, 10);
+
+        client.get()
+                .uri("/events/{eventId}/seats?page=2&size=10", eventId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content.length()").isEqualTo(10)
+                .jsonPath("$.content[0].rowLabel").isEqualTo("3")
+                .jsonPath("$.content[0].seatNumber").isEqualTo(1)
+                .jsonPath("$.content[9].seatNumber").isEqualTo(10);
+    }
+
+    @Test
+    void seatsCanBeFilteredByStatus() {
+        Long eventId = createEventWithSeats(3, 10);
+
+        client.get()
+                .uri("/events/{eventId}/seats?status=AVAILABLE", eventId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(30);
+
+        client.get()
+                .uri("/events/{eventId}/seats?status=SOLD", eventId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
+    void invalidStatusIsRejected() {
+        client.get()
+                .uri("/events/{eventId}/seats?status=NONSENSE", createEvent())
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void listingSeatsForUnknownEventReturnsNotFound() {
+        client.get()
+                .uri("/events/999999/seats")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void pageSizeIsCapped() {
+        Long eventId = createEventWithSeats(15, 10);
+
+        client.get()
+                .uri("/events/{eventId}/seats?size=500", eventId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.size").isEqualTo(100)
+                .jsonPath("$.content.length()").isEqualTo(100)
+                .jsonPath("$.totalElements").isEqualTo(150);
+    }
+
+    private Long createEventWithSeats(int rows, int seatsPerRow) {
+        Long eventId = createEvent();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", rows, seatsPerRow, 8500))))
+                .expectStatus().isCreated();
+
+        return eventId;
+    }
 }

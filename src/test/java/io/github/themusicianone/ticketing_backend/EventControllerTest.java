@@ -112,4 +112,21 @@ class EventControllerTest {
 
         return venue.id();
     }
+
+    @Test
+    void eventsArePaginated() {
+        Long venueId = createVenue();
+        for (int i = 1; i <= 3; i++) {
+            postEvent(new CreateEventRequest("Concert " + i, FUTURE_DATE, venueId))
+                    .expectStatus().isCreated();
+        }
+
+        client.get()
+                .uri("/events?page=0&size=2")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content.length()").isEqualTo(2)
+                .jsonPath("$.size").isEqualTo(2);
+    }
 }

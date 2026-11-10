@@ -1,5 +1,7 @@
 package io.github.themusicianone.ticketing_backend;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,5 +36,12 @@ public class EventService {
         Event savedEvent = eventRepository.save(event);
         return EventResponse.from(savedEvent);
 
+    }
+
+    @Transactional(readOnly = true)
+    PageResponse<EventResponse> findAll(Pageable pageable) {
+        Page<Event> events = eventRepository.findAll(pageable);
+
+        return PageResponse.from(events.map(EventResponse::from));
     }
 }

@@ -2,6 +2,8 @@ package io.github.themusicianone.ticketing_backend;
 
 
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,5 +72,21 @@ public class SeatService {
 
         seatRepository.saveAll(newSeats);
         return new GenerateSeatResponse(eventId, newSeats.size());
+    }
+
+    @Transactional(readOnly = true)
+    PageResponse<SeatResponse> findAll(Long eventId, SeatStatus status, Pageable pageable) {
+        if (!eventRepository.existsById(eventId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found");
+        }
+
+        Page<Seat> seats;
+        if (status == null) {
+            seats = seatRepository.findByEvent_Id(eventId, pageable);
+        } else {
+            seats = seatRepository.findByEvent_IdAndStatus(eventId, status, pageable);
+        }
+
+        return PageResponse.from(seats.map(SeatResponse::from));
     }
 }

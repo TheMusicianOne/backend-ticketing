@@ -2,6 +2,8 @@ package io.github.themusicianone.ticketing_backend;
 
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -35,4 +37,11 @@ class EventController {
         URI locationOfNewEvent = ucb.path("/events/{id}").buildAndExpand(created.id()).toUri();
         return ResponseEntity.created(locationOfNewEvent).body(created);
     }
+
+    @GetMapping
+    PageResponse<EventResponse> getEvents(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return eventService.findAll(pageable);
+    }
+
 }
