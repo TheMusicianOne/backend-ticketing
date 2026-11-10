@@ -1,4 +1,4 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.seat;
 
 public record SeatResponse(Long id, String section, Long eventId, String rowLabel, Integer seatNumber, Integer priceCents, SeatStatus status) {
     static SeatResponse from(Seat seat) {

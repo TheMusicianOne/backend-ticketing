@@ -2,6 +2,7 @@ package io.github.themusicianone.ticketing_backend;
 
 import java.net.URI;
 
+import io.github.themusicianone.ticketing_backend.venue.CreateVenueRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;

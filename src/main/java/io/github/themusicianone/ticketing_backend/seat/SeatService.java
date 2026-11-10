@@ -1,7 +1,10 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.seat;
 
 
 
+import io.github.themusicianone.ticketing_backend.common.PageResponse;
+import io.github.themusicianone.ticketing_backend.event.Event;
+import io.github.themusicianone.ticketing_backend.event.EventRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;

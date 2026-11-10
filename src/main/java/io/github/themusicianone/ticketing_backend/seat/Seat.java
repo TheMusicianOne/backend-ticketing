@@ -1,4 +1,5 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.seat;
+import io.github.themusicianone.ticketing_backend.event.Event;
 import jakarta.persistence.*;
 
 

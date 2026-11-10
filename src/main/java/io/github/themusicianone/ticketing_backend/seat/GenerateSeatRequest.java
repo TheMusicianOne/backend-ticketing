@@ -1,4 +1,4 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.seat;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;

@@ -1,4 +1,4 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.common;
 
 import org.springframework.data.domain.Page;
 
@@ -12,7 +12,7 @@ public record PageResponse<T>(
         int totalPages
 ) {
 
-    static <T> PageResponse<T> from(Page<T> page) {
+    public static <T> PageResponse<T> from(Page<T> page) {
         return new PageResponse<>(
                 page.getContent(),
                 page.getNumber(),

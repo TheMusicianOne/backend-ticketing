@@ -1,4 +1,5 @@
-package io.github.themusicianone.ticketing_backend;
+package io.github.themusicianone.ticketing_backend.event;
+import io.github.themusicianone.ticketing_backend.venue.Venue;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;

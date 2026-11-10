@@ -4,6 +4,13 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 
+import io.github.themusicianone.ticketing_backend.event.CreateEventRequest;
+import io.github.themusicianone.ticketing_backend.event.EventResponse;
+import io.github.themusicianone.ticketing_backend.seat.CreateSeatRequest;
+import io.github.themusicianone.ticketing_backend.seat.GenerateSeatRequest;
+import io.github.themusicianone.ticketing_backend.seat.SectionLayout;
+import io.github.themusicianone.ticketing_backend.venue.CreateVenueRequest;
+import io.github.themusicianone.ticketing_backend.venue.VenueResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -150,7 +157,7 @@ class SeatControllerTest {
 
         // The only seat should be row 1, seat 1, and the database will reject anything below 1
         postSeat(eventId, new CreateSeatRequest("Floor", "1", 1, 8500))
-                .expectStatus().is5xxServerError();
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
