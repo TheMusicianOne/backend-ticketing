@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
@@ -40,7 +40,7 @@ class AuthorizationTest extends IntegrationTest {
     void adminEndpointsRequireAuthentication(String uri) {
         post(uri, null)
                 .expectStatus().isUnauthorized()
-                .expectHeader().value(HttpHeaders.WWW_AUTHENTICATE, header -> header.startsWith("Bearer"));
+                .expectHeader().value(HttpHeaders.WWW_AUTHENTICATE, header -> assertThat(header).startsWith("Bearer"));
     }
 
     @ParameterizedTest
