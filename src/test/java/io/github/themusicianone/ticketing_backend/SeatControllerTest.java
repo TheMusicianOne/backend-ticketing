@@ -11,21 +11,19 @@ import io.github.themusicianone.ticketing_backend.seat.GenerateSeatRequest;
 import io.github.themusicianone.ticketing_backend.seat.SectionLayout;
 import io.github.themusicianone.ticketing_backend.venue.CreateVenueRequest;
 import io.github.themusicianone.ticketing_backend.venue.VenueResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@Import(TestcontainersConfiguration.class)
-@AutoConfigureRestTestClient
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class SeatControllerTest {
+class SeatControllerTest extends IntegrationTest {
 
-    @Autowired
-    private RestTestClient client;
+    private String adminToken;
+
+    @BeforeEach
+    void authenticateAsAdmin() {
+        adminToken = adminToken();
+    }
 
     @Test
     void createdSeatCanBeFetched() {
@@ -33,6 +31,7 @@ class SeatControllerTest {
 
         URI location = client.post()
                 .uri("/events/{eventId}/seats", eventId)
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateSeatRequest("A", "1", 5, 2500))
                 .exchange()
@@ -56,6 +55,7 @@ class SeatControllerTest {
     private Long createEvent() {
         VenueResponse venue = client.post()
                 .uri("/venues")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateVenueRequest("Test venue", "Amsterdam"))
                 .exchange()
@@ -66,6 +66,7 @@ class SeatControllerTest {
 
         return client.post()
                 .uri("/events")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateEventRequest("Test concert", Instant.parse("2099-06-12T20:00:00Z"), venue.id()))
                 .exchange()
@@ -140,6 +141,7 @@ class SeatControllerTest {
     private RestTestClient.ResponseSpec postSeat(Long eventId, CreateSeatRequest request) {
         return client.post()
                 .uri("/events/{eventId}/seats", eventId)
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange();
@@ -232,6 +234,7 @@ class SeatControllerTest {
     private RestTestClient.ResponseSpec postGenerate(Long eventId, GenerateSeatRequest request) {
         return client.post()
                 .uri("/events/{eventId}/seats/generate", eventId)
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange();

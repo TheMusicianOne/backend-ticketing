@@ -22,9 +22,17 @@ public class User {
     private Instant createdAt;
 
     public User(String email, String passwordHash) {
+        this(email, passwordHash, Role.CUSTOMER);
+    }
+
+    private User(String email, String passwordHash, Role role) {
         this.email = email;
         this.passwordHash = passwordHash;
-        this.role = Role.CUSTOMER;
+        this.role = role;
+    }
+
+    public static User admin(String email, String passwordHash) {
+        return new User(email, passwordHash, Role.ADMIN);
     }
     protected User() {}
 

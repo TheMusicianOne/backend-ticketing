@@ -6,23 +6,21 @@ import java.time.Instant;
 import io.github.themusicianone.ticketing_backend.event.CreateEventRequest;
 import io.github.themusicianone.ticketing_backend.venue.CreateVenueRequest;
 import io.github.themusicianone.ticketing_backend.venue.VenueResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@Import(TestcontainersConfiguration.class)
-@AutoConfigureRestTestClient
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class EventControllerTest {
+class EventControllerTest extends IntegrationTest {
+
+    private String adminToken;
+
+    @BeforeEach
+    void authenticateAsAdmin() {
+        adminToken = adminToken();
+    }
 
     private static final Instant FUTURE_DATE = Instant.parse("2099-06-12T20:00:00Z");
-
-    @Autowired
-    private RestTestClient client;
 
     @Test
     void createdEventCanBeFetched() {
@@ -31,6 +29,7 @@ class EventControllerTest {
 
         URI location = client.post()
                 .uri("/events")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange()
@@ -99,6 +98,7 @@ class EventControllerTest {
     private RestTestClient.ResponseSpec postEvent(CreateEventRequest request) {
         return client.post()
                 .uri("/events")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange();
@@ -107,6 +107,7 @@ class EventControllerTest {
     private Long createVenue() {
         VenueResponse venue = client.post()
                 .uri("/venues")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateVenueRequest("Test venue", "Amsterdam"))
                 .exchange()

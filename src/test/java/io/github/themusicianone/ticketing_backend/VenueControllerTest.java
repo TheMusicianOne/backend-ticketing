@@ -3,21 +3,19 @@ package io.github.themusicianone.ticketing_backend;
 import java.net.URI;
 
 import io.github.themusicianone.ticketing_backend.venue.CreateVenueRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@Import(TestcontainersConfiguration.class)
-@AutoConfigureRestTestClient
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class VenueControllerTest {
+class VenueControllerTest extends IntegrationTest {
 
-    @Autowired
-    private RestTestClient client;
+    private String adminToken;
+
+    @BeforeEach
+    void authenticateAsAdmin() {
+        adminToken = adminToken();
+    }
 
     @Test
     void createdVenueCanBeFetched() {
@@ -62,6 +60,7 @@ class VenueControllerTest {
     private RestTestClient.ResponseSpec postVenue(CreateVenueRequest request) {
         return client.post()
                 .uri("/venues")
+                .headers(h -> h.setBearerAuth(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange();
