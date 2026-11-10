@@ -2,6 +2,7 @@ package io.github.themusicianone.ticketing_backend;
 
 
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -34,5 +35,12 @@ public class SeatController {
 
         URI locationOfNewSeat = ucb.path("/events/{eventId}/seats/{seatId}").buildAndExpand(created.eventId(),created.id()).toUri();
         return ResponseEntity.created(locationOfNewSeat).body(created);
+    }
+
+    @PostMapping("/generate")
+    private ResponseEntity<GenerateSeatResponse> generateSeats(@PathVariable Long eventId,  @Valid @RequestBody GenerateSeatRequest request) {
+    GenerateSeatResponse result = seatService.generate(eventId, request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(result);
+
     }
 }

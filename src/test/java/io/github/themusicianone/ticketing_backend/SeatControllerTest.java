@@ -2,6 +2,7 @@ package io.github.themusicianone.ticketing_backend;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +119,98 @@ class SeatControllerTest {
     private RestTestClient.ResponseSpec postSeat(Long eventId, CreateSeatRequest request) {
         return client.post()
                 .uri("/events/{eventId}/seats", eventId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .exchange();
+    }
+
+
+    @Test
+    void seatsAreGeneratedForEvent() {
+        Long eventId = createEvent();
+
+        GenerateSeatRequest request = new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 20, 30, 8500),
+                new SectionLayout("Balcony", 10, 25, 4500)));
+
+        postGenerate(eventId, request)
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.eventId").isEqualTo(eventId)
+                .jsonPath("$.seatsCreated").isEqualTo(850);
+    }
+
+    @Test
+    void generatedSeatsStartAtRowAndSeatOne() {
+        Long eventId = createEvent();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 1, 1, 8500))))
+                .expectStatus().isCreated();
+
+        // The only seat should be row 1, seat 1, and the database will reject anything below 1
+        postSeat(eventId, new CreateSeatRequest("Floor", "1", 1, 8500))
+                .expectStatus().is5xxServerError();
+    }
+
+    @Test
+    void generatingSeatsTwiceIsRejected() {
+        Long eventId = createEvent();
+        GenerateSeatRequest request = new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 2, 2, 8500)));
+
+        postGenerate(eventId, request)
+                .expectStatus().isCreated();
+
+        postGenerate(eventId, request)
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void generatingSeatsForUnknownEventReturnsNotFound() {
+        postGenerate(999999L, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 2, 2, 8500))))
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void emptySectionListIsRejected() {
+        postGenerate(createEvent(), new GenerateSeatRequest(List.of()))
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void invalidSectionsAreRejected() {
+        Long eventId = createEvent();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 0, 10, 8500))))
+                .expectStatus().isBadRequest();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 101, 10, 8500))))
+                .expectStatus().isBadRequest();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("", 2, 2, 8500))))
+                .expectStatus().isBadRequest();
+
+        postGenerate(eventId, new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 2, 2, -1))))
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void duplicateSectionNamesAreRejected() {
+        postGenerate(createEvent(), new GenerateSeatRequest(List.of(
+                new SectionLayout("Floor", 2, 2, 8500),
+                new SectionLayout("Floor", 3, 3, 6500))))
+                .expectStatus().isBadRequest();
+    }
+
+    private RestTestClient.ResponseSpec postGenerate(Long eventId, GenerateSeatRequest request) {
+        return client.post()
+                .uri("/events/{eventId}/seats/generate", eventId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .exchange();

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class SeatService {
@@ -35,5 +35,40 @@ public class SeatService {
         Seat seat = new Seat(event, request.section(), request.rowLabel(), request.seatNumber(), request.priceCents());
         Seat savedSeat = seatRepository.save(seat);
         return SeatResponse.from(savedSeat);
+    }
+
+
+    @Transactional
+    GenerateSeatResponse generate(Long eventId, GenerateSeatRequest request) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Event not found"));
+
+        if (seatRepository.existsByEvent_Id(eventId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Seats already generated for this event");
+        }
+
+        Set<String> sectionNames = new HashSet<>();
+        for (SectionLayout section : request.sections()) {
+            sectionNames.add(section.name());
+        }
+
+        if (sectionNames.size() != request.sections().size()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Duplicate section names cannot exist");
+        }
+        List<Seat> newSeats = new ArrayList<>();
+        for (SectionLayout section : request.sections()) {
+            for (int row = 1; row <= section.rows(); row++) {
+                for (int seatNo = 1; seatNo <= section.seatsPerRow(); seatNo++) {
+                    newSeats.add(new Seat(event, section.name(),
+                            String.valueOf(row), seatNo, section.priceCents()));
+                }
+            }
+        }
+
+        seatRepository.saveAll(newSeats);
+        return new GenerateSeatResponse(eventId, newSeats.size());
     }
 }
