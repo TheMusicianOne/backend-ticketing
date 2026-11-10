@@ -56,7 +56,9 @@ class EventControllerTest {
         CreateEventRequest request = new CreateEventRequest("", FUTURE_DATE, createVenue());
 
         postEvent(request)
-                .expectStatus().isBadRequest();
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.errors.name").exists();
     }
 
     @Test

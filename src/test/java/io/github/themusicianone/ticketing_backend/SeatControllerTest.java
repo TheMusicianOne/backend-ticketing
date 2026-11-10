@@ -100,7 +100,21 @@ class SeatControllerTest {
     @Test
     void creatingSeatForUnknownEventReturnsNotFound() {
         postSeat(999999L, new CreateSeatRequest("A", "1", 5, 2500))
-                .expectStatus().isNotFound();
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("Event not found");
+    }
+
+    @Test
+    void creatingSameSeatTwiceIsRejected() {
+        Long eventId = createEvent();
+        CreateSeatRequest request = new CreateSeatRequest("A", "1", 5, 2500);
+
+        postSeat(eventId, request)
+                .expectStatus().isCreated();
+
+        postSeat(eventId, request)
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
