@@ -18,7 +18,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "app.admin.email=" + IntegrationTest.ADMIN_EMAIL,
-                "app.admin.password=" + IntegrationTest.ADMIN_PASSWORD
+                "app.admin.password=" + IntegrationTest.ADMIN_PASSWORD,
+                "app.holds.expiry-job.enabled=false"
         })
 public abstract class IntegrationTest {
 

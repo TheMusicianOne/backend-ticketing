@@ -13,12 +13,16 @@ import io.github.themusicianone.ticketing_backend.common.PageResponse;
 import io.github.themusicianone.ticketing_backend.seat.SeatResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.EntityExchangeResult;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 class HoldControllerTest extends IntegrationTest {
+
+    @Autowired
+    private HoldService holdService;
 
     private String adminToken;
 
@@ -355,7 +359,119 @@ class HoldControllerTest extends IntegrationTest {
                 .expectStatus().isCreated();
     }
 
+    // ---- Expiring holds --------------------------------------------------------
+    // These call the service directly with a time 11 minutes ahead,
+    // so every hold created in the test looks expired without waiting.
+
+    @Test
+    void expiredHoldReleasesItsSeats() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, seatIds);
+
+        int expired = holdService.expireDueHolds(elevenMinutesFromNow());
+
+        assertThat(expired).isGreaterThanOrEqualTo(1);
+        assertThat(seatIdsWithStatus(eventId, "HELD")).isEmpty();
+        assertThat(seatIdsWithStatus(eventId, "AVAILABLE")).containsAll(seatIds);
+
+        getHold(holdId, token)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("EXPIRED");
+    }
+
+    @Test
+    void holdThatIsNotDueStaysActive() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, seatIds);
+
+        holdService.expireDueHolds(Instant.now());
+
+        assertThat(seatIdsWithStatus(eventId, "HELD")).containsExactlyInAnyOrderElementsOf(seatIds);
+        getHold(holdId, token)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void seatsFromExpiredHoldCanBeHeldAgain() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        createHold(eventId, customerToken(), seatIds);
+
+        holdService.expireDueHolds(elevenMinutesFromNow());
+
+        postHold(eventId, customerToken(), seatIds)
+                .expectStatus().isCreated();
+    }
+
+    @Test
+    void releasedHoldIsNotExpired() {
+        Long eventId = createEventWithSeats(5);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, firstSeatIds(eventId, 1));
+
+        deleteHold(holdId, token)
+                .expectStatus().isNoContent();
+
+        holdService.expireDueHolds(elevenMinutesFromNow());
+
+        getHold(holdId, token)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("RELEASED");
+    }
+
+    @Test
+    void expiredHoldCannotBeReleased() {
+        Long eventId = createEventWithSeats(5);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, firstSeatIds(eventId, 1));
+
+        holdService.expireDueHolds(elevenMinutesFromNow());
+
+        deleteHold(holdId, token)
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void expiredSeatsDoNotCountTowardsLimit() {
+        Long eventId = createEventWithSeats(12);
+        List<Long> seatIds = firstSeatIds(eventId, 12);
+        String token = customerToken();
+
+        createHold(eventId, token, seatIds.subList(0, 6));
+
+        holdService.expireDueHolds(elevenMinutesFromNow());
+
+        postHold(eventId, token, seatIds.subList(6, 12))
+                .expectStatus().isCreated();
+    }
+
+    @Test
+    void runningExpiryAgainExpiresNothing() {
+        Long eventId = createEventWithSeats(5);
+        createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+        Instant future = elevenMinutesFromNow();
+
+        // Other tests share this database, so keep running until everything due has expired
+        while (holdService.expireDueHolds(future) > 0) {
+            // keep going
+        }
+
+        assertThat(holdService.expireDueHolds(future)).isZero();
+    }
+
     // ---- Helpers -------------------------------------------------------------
+
+    private Instant elevenMinutesFromNow() {
+        return Instant.now().plus(Duration.ofMinutes(11));
+    }
 
     private Long createHold(Long eventId, String token, List<Long> seatIds) {
         return postHold(eventId, token, seatIds)

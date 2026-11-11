@@ -8,6 +8,7 @@ import io.github.themusicianone.ticketing_backend.seat.SeatRepository;
 import io.github.themusicianone.ticketing_backend.seat.SeatStatus;
 import io.github.themusicianone.ticketing_backend.user.User;
 import io.github.themusicianone.ticketing_backend.user.UserRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,8 @@ import java.util.Set;
 
 @Service
 public class HoldService {
-
+    private static final int EXPIRY_BATCH_SIZE = 500;
+    private static final Duration HOLD_DURATION = Duration.ofMinutes(10);
     private final HoldRepository holdRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
@@ -59,7 +61,7 @@ public class HoldService {
 
         User user = userRepository.getReferenceById(userId);
 
-        Hold hold = new Hold(user,event, Instant.now().plus(Duration.ofMinutes(10)));
+        Hold hold = new Hold(user,event, Instant.now().plus(HOLD_DURATION));
         Hold holdSaved = holdRepository.save(hold);
 
         int available_holds = seatRepository.holdSeats(holdSaved,eventId,seatIds,SeatStatus.HELD, SeatStatus.AVAILABLE);
@@ -95,5 +97,23 @@ public class HoldService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Hold is no longer active");
         }
         seatRepository.releaseSeats(holdId,SeatStatus.AVAILABLE, SeatStatus.HELD);
+    }
+
+    @Transactional
+    public int expireDueHolds(Instant now) {
+        List<Long> dueHoldIds = holdRepository.findDueHoldIds(
+                HoldStatus.ACTIVE, now, PageRequest.of(0, EXPIRY_BATCH_SIZE));
+
+        if (dueHoldIds.isEmpty()) {
+            return 0;
+        }
+
+        int expiredHolds = holdRepository.expireHolds(
+                dueHoldIds, HoldStatus.EXPIRED, HoldStatus.ACTIVE);
+
+        seatRepository.releaseSeatsForHolds(
+                dueHoldIds, SeatStatus.AVAILABLE, SeatStatus.HELD);
+
+        return expiredHolds;
     }
 }
