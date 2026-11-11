@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface SeatRepository extends JpaRepository<Seat, Long> {
@@ -39,4 +40,20 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
 
 
     long countByEvent_IdAndHold_User_IdAndHold_Status(Long eventId, Long userId, HoldStatus status);
+
+    @Query("SELECT s.id FROM Seat s WHERE s.hold.id = :holdId ORDER BY s.id")
+    List<Long> findIdsByHoldId(@Param("holdId") Long holdId);
+
+
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        UPDATE Seat s
+        SET s.status = :available, s.hold = null, s.version = s.version + 1
+        WHERE s.hold.id = :holdId
+          AND s.status = :held
+        """)
+    int releaseSeats(@Param("holdId") Long holdId,
+                     @Param("available") SeatStatus available,
+                     @Param("held") SeatStatus held);
     }

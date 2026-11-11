@@ -183,7 +183,215 @@ class HoldControllerTest extends IntegrationTest {
                 .expectStatus().isUnauthorized();
     }
 
+    // ---- Viewing holds -------------------------------------------------------
+
+    @Test
+    void ownerCanViewTheirHold() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, seatIds);
+
+        HoldResponse hold = getHold(holdId, token)
+                .expectStatus().isOk()
+                .expectBody(HoldResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(hold.id()).isEqualTo(holdId);
+        assertThat(hold.eventId()).isEqualTo(eventId);
+        assertThat(hold.status()).isEqualTo(HoldStatus.ACTIVE);
+        assertThat(hold.seatIds()).containsExactlyInAnyOrderElementsOf(seatIds);
+    }
+
+    @Test
+    void otherCustomerCannotViewHold() {
+        Long eventId = createEventWithSeats(5);
+        Long holdId = createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+
+        getHold(holdId, customerToken())
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void adminCannotViewCustomersHold() {
+        Long eventId = createEventWithSeats(5);
+        Long holdId = createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+
+        getHold(holdId, adminToken)
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void otherCustomersHoldAndUnknownHoldLookTheSame() {
+        Long eventId = createEventWithSeats(5);
+        Long holdId = createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+        String otherToken = customerToken();
+
+        String otherCustomersHold = getHold(holdId, otherToken)
+                .expectStatus().isNotFound()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String unknownHold = getHold(999999L, otherToken)
+                .expectStatus().isNotFound()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        // Only the "instance" path differs, so compare the detail messages
+        assertThat(detailOf(otherCustomersHold)).isEqualTo(detailOf(unknownHold));
+    }
+
+    @Test
+    void unknownHoldReturnsNotFound() {
+        getHold(999999L, customerToken())
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void viewingHoldRequiresLogin() {
+        Long eventId = createEventWithSeats(5);
+        Long holdId = createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+
+        getHold(holdId, null)
+                .expectStatus().isUnauthorized();
+    }
+
+    // ---- Releasing holds -----------------------------------------------------
+
+    @Test
+    void ownerCanReleaseHold() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, seatIds);
+
+        deleteHold(holdId, token)
+                .expectStatus().isNoContent();
+
+        assertThat(seatIdsWithStatus(eventId, "HELD")).isEmpty();
+        assertThat(seatIdsWithStatus(eventId, "AVAILABLE")).containsAll(seatIds);
+
+        getHold(holdId, token)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("RELEASED");
+    }
+
+    @Test
+    void releasingTwiceIsRejected() {
+        Long eventId = createEventWithSeats(5);
+        String token = customerToken();
+        Long holdId = createHold(eventId, token, firstSeatIds(eventId, 1));
+
+        deleteHold(holdId, token)
+                .expectStatus().isNoContent();
+
+        deleteHold(holdId, token)
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void otherCustomerCannotReleaseHold() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String ownerToken = customerToken();
+        Long holdId = createHold(eventId, ownerToken, seatIds);
+
+        deleteHold(holdId, customerToken())
+                .expectStatus().isNotFound();
+
+        // Nothing changed: seats still held, hold still active
+        assertThat(seatIdsWithStatus(eventId, "HELD")).containsExactlyInAnyOrderElementsOf(seatIds);
+        getHold(holdId, ownerToken)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void releasingUnknownHoldReturnsNotFound() {
+        deleteHold(999999L, customerToken())
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void releasingHoldRequiresLogin() {
+        Long eventId = createEventWithSeats(5);
+        Long holdId = createHold(eventId, customerToken(), firstSeatIds(eventId, 1));
+
+        deleteHold(holdId, null)
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void releasedSeatsCanBeHeldByAnotherCustomer() {
+        Long eventId = createEventWithSeats(5);
+        List<Long> seatIds = firstSeatIds(eventId, 2);
+        String firstToken = customerToken();
+        Long holdId = createHold(eventId, firstToken, seatIds);
+
+        deleteHold(holdId, firstToken)
+                .expectStatus().isNoContent();
+
+        postHold(eventId, customerToken(), seatIds)
+                .expectStatus().isCreated();
+    }
+
+    @Test
+    void releasedSeatsDoNotCountTowardsLimit() {
+        Long eventId = createEventWithSeats(12);
+        List<Long> seatIds = firstSeatIds(eventId, 12);
+        String token = customerToken();
+
+        Long holdId = createHold(eventId, token, seatIds.subList(0, 6));
+
+        deleteHold(holdId, token)
+                .expectStatus().isNoContent();
+
+        postHold(eventId, token, seatIds.subList(6, 12))
+                .expectStatus().isCreated();
+    }
+
     // ---- Helpers -------------------------------------------------------------
+
+    private Long createHold(Long eventId, String token, List<Long> seatIds) {
+        return postHold(eventId, token, seatIds)
+                .expectStatus().isCreated()
+                .expectBody(HoldResponse.class)
+                .returnResult()
+                .getResponseBody()
+                .id();
+    }
+
+    private RestTestClient.ResponseSpec getHold(Long holdId, String token) {
+        return client.get()
+                .uri("/holds/{holdId}", holdId)
+                .headers(h -> {
+                    if (token != null) {
+                        h.setBearerAuth(token);
+                    }
+                })
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec deleteHold(Long holdId, String token) {
+        return client.delete()
+                .uri("/holds/{holdId}", holdId)
+                .headers(h -> {
+                    if (token != null) {
+                        h.setBearerAuth(token);
+                    }
+                })
+                .exchange();
+    }
+
+    private String detailOf(String problemJson) {
+        int start = problemJson.indexOf("\"detail\":\"") + "\"detail\":\"".length();
+        return problemJson.substring(start, problemJson.indexOf('"', start));
+    }
 
     private RestTestClient.ResponseSpec postHold(Long eventId, String token, List<Long> seatIds) {
         String ids = seatIds.stream().map(String::valueOf).collect(Collectors.joining(","));

@@ -30,4 +30,17 @@ public class HoldController {
         return ResponseEntity.created(locationOfNewHold).body(created);
     }
 
+
+    @GetMapping("/holds/{holdId}")
+    ResponseEntity<HoldResponse> getHold(@PathVariable Long holdId, @AuthenticationPrincipal Jwt jwt) {
+        HoldResponse response = holdService.findForUser(holdId, Long.valueOf(jwt.getSubject()));
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/holds/{holdId}")
+    ResponseEntity<Void> releaseHold(@PathVariable Long holdId, @AuthenticationPrincipal Jwt jwt) {
+        holdService.release(holdId, Long.valueOf(jwt.getSubject()));
+        return ResponseEntity.noContent().build();
+    }
+
 }

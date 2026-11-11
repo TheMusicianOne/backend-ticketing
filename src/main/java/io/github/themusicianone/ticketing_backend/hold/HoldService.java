@@ -3,11 +3,12 @@ package io.github.themusicianone.ticketing_backend.hold;
 
 import io.github.themusicianone.ticketing_backend.event.Event;
 import io.github.themusicianone.ticketing_backend.event.EventRepository;
+import io.github.themusicianone.ticketing_backend.seat.Seat;
 import io.github.themusicianone.ticketing_backend.seat.SeatRepository;
 import io.github.themusicianone.ticketing_backend.seat.SeatStatus;
 import io.github.themusicianone.ticketing_backend.user.User;
 import io.github.themusicianone.ticketing_backend.user.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -69,9 +70,30 @@ public class HoldService {
 
         return HoldResponse.from(holdSaved, List.copyOf(seatIds));
 
+    }
 
+    @Transactional(readOnly=true)
+    public HoldResponse findForUser(Long holdId, Long userId) {
+        Optional<Hold> ophold = holdRepository.findByIdAndUser_Id(holdId, userId);
+        if (!ophold.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Hold does not exist");
+        }
+        Hold hold = ophold.get();
 
+        return HoldResponse.from(hold,seatRepository.findIdsByHoldId(holdId));
+    }
 
+    @Transactional
+    public void release (Long holdId, Long userId) {
+        int releaseResponse = holdRepository.releaseHold(holdId, userId, HoldStatus.RELEASED,HoldStatus.ACTIVE);
+        if (releaseResponse == 0) {
+            Optional<Hold> ophold = holdRepository.findByIdAndUser_Id(holdId, userId);
+            if (!ophold.isPresent()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Hold not found");
 
+            }
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hold is no longer active");
+        }
+        seatRepository.releaseSeats(holdId,SeatStatus.AVAILABLE, SeatStatus.HELD);
     }
 }
