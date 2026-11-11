@@ -1,5 +1,6 @@
 package io.github.themusicianone.ticketing_backend.seat;
 import io.github.themusicianone.ticketing_backend.event.Event;
+import io.github.themusicianone.ticketing_backend.hold.Hold;
 import jakarta.persistence.*;
 
 
@@ -24,6 +25,13 @@ public class Seat {
 
     @Enumerated(EnumType.STRING)
     private SeatStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hold_id")
+    private Hold hold;
+
+    @Version
+    private Long version;
 
     protected Seat() {
 
