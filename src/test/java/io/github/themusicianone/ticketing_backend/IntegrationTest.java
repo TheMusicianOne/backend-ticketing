@@ -19,7 +19,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
         properties = {
                 "app.admin.email=" + IntegrationTest.ADMIN_EMAIL,
                 "app.admin.password=" + IntegrationTest.ADMIN_PASSWORD,
-                "app.holds.expiry-job.enabled=false"
+                "app.holds.expiry-job.enabled=false",
+                "app.payments.provider=stub"
         })
 public abstract class IntegrationTest {
 

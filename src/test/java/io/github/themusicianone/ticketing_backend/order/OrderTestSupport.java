@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
  * Shared setup for checkout and order tests: events with seats, holds,
  * checkout requests, and direct database checks.
  */
-abstract class OrderTestSupport extends IntegrationTest {
+public abstract class OrderTestSupport extends IntegrationTest {
 
     protected static final int SEAT_PRICE_CENTS = 5000;
 

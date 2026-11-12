@@ -25,4 +25,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                       @Param("newStatus") OrderStatus newStatus,
                       @Param("pending") OrderStatus pending,
                       @Param("now") Instant now);
+
+    Optional<Order> findByPaymentId(String paymentId);
 }
