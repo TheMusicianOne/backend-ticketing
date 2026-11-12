@@ -14,11 +14,11 @@ import java.util.HexFormat;
 import java.util.Map;
 
 @Component
-class WebhookSignatureVerifier {
+class WebHookSignatureVerifier {
 
     private final PaymentProperties properties;
 
-    WebhookSignatureVerifier(PaymentProperties properties) {
+    WebHookSignatureVerifier(PaymentProperties properties) {
         this.properties = properties;
     }
 

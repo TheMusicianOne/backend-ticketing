@@ -15,11 +15,11 @@ class PaymentWebhookController {
 
     // inject WebhookSignatureVerifier, PaymentWebhookService, and JsonMapper
 
-    private final WebhookSignatureVerifier verifier;
+    private final WebHookSignatureVerifier verifier;
     private final PaymentWebhookService webhookService;
     private final JsonMapper jsonMapper;
 
-    public PaymentWebhookController(WebhookSignatureVerifier verifier, PaymentWebhookService webhookService,JsonMapper jsonMapper) {
+    public PaymentWebhookController(WebHookSignatureVerifier verifier, PaymentWebhookService webhookService, JsonMapper jsonMapper) {
         this.verifier = verifier;
         this.webhookService = webhookService;
         this.jsonMapper = jsonMapper;

@@ -5,6 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 @Component
@@ -48,5 +49,31 @@ class HttpPaymentGateway implements PaymentGateway {
 
     // The parts of the provider's answer we need. Spring ignores the other fields.
     record ProviderPayment(String id, String status, String checkoutUrl) {
+    }
+
+    @Override
+    public ProviderStatus getStatus(String paymentId) {
+        try {
+            ProviderPayment payment = restClient.get()
+                    .uri("/v1/payments/{id}", paymentId)
+                    .retrieve()
+                    .body(ProviderPayment.class);
+            return ProviderStatus.fromProvider(payment.status());
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new PaymentNotFoundException(paymentId);
+        }
+    }
+
+    @Override
+    public boolean cancel(String paymentId) {
+        try {
+            restClient.post()
+                    .uri("/v1/payments/{id}/cancel", paymentId)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (HttpClientErrorException.Conflict e) {
+            return false;
+        }
     }
 }

@@ -20,7 +20,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
                 "app.admin.email=" + IntegrationTest.ADMIN_EMAIL,
                 "app.admin.password=" + IntegrationTest.ADMIN_PASSWORD,
                 "app.holds.expiry-job.enabled=false",
-                "app.payments.provider=stub"
+                "app.payments.provider=stub",
+                "app.payments.reconciliation.enabled=false"
         })
 public abstract class IntegrationTest {
 

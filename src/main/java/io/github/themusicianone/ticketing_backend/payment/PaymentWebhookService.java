@@ -17,11 +17,13 @@ class PaymentWebhookService {
     private final PaymentWebhookEventRepository pwerepository;
     private final OrderService orderService;
     private final OrderRepository orderRepository;
+    private final PaymentOutcomeService paymentOutcomeService;
 
-    public PaymentWebhookService(PaymentWebhookEventRepository pwerepository,OrderService orderService,OrderRepository orderRepository) {
+    public PaymentWebhookService(PaymentWebhookEventRepository pwerepository,OrderService orderService,OrderRepository orderRepository, PaymentOutcomeService paymentOutcomeService) {
         this.pwerepository = pwerepository;
         this.orderService = orderService;
         this.orderRepository = orderRepository;
+        this.paymentOutcomeService = paymentOutcomeService;
     }
 
     record PaymentEvent(String eventId, String paymentId, String status) {
@@ -41,15 +43,7 @@ class PaymentWebhookService {
         }
 
         Long orderId = order.get().getId();
-        switch (event.status()) {
-            case "paid" -> {
-                if (orderService.confirmOrder(orderId) == ConfirmResult.NEEDS_REFUND) {
-                    log.warn("Order {} was paid after it ended and needs a refund", orderId);
-                }
-            }
-            case "failed" -> orderService.failOrder(orderId, OrderStatus.FAILED);
-            case "canceled", "expired" -> orderService.failOrder(orderId, OrderStatus.EXPIRED);
-            default -> log.info("Ignoring status {} for order {}", event.status(), orderId);
-        }
+        paymentOutcomeService.apply(orderId, ProviderStatus.fromProvider(event.status()));
+
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -27,4 +28,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                       @Param("now") Instant now);
 
     Optional<Order> findByPaymentId(String paymentId);
+
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.status = :pending
+          AND o.paymentId IS NOT NULL
+          AND o.createdAt <= :checkBefore
+        ORDER BY o.createdAt
+        """)
+    List<Order> findPendingToReconcile(@Param("pending") OrderStatus pending,
+                                       @Param("checkBefore") Instant checkBefore,
+                                       Pageable pageable);
 }
