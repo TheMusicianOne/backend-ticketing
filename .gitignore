@@ -44,5 +44,7 @@ Thumbs.db
 
 #The fake payment provider
 
-fake-payment-provider/
-
+fake-payment-provider/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
