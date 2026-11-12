@@ -2,9 +2,11 @@ package io.github.themusicianone.ticketing_backend.seat;
 
 import io.github.themusicianone.ticketing_backend.hold.Hold;
 import io.github.themusicianone.ticketing_backend.hold.HoldStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,7 +41,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
 
 
 
-    long countByEvent_IdAndHold_User_IdAndHold_Status(Long eventId, Long userId, HoldStatus status);
+    long countByEvent_IdAndHold_User_IdAndHold_StatusIn(Long eventId, Long userId, Collection<HoldStatus> statuses);
 
     @Query("SELECT s.id FROM Seat s WHERE s.hold.id = :holdId ORDER BY s.id")
     List<Long> findIdsByHoldId(@Param("holdId") Long holdId);
@@ -68,7 +70,16 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
                              @Param("available") SeatStatus available,
                              @Param("held") SeatStatus held);
 
+    List<Seat> findAllByIdInAndEvent_IdOrderById(Collection<Long> ids, Long eventId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT s FROM Seat s
+        WHERE s.id IN :seatIds AND s.event.id = :eventId
+        ORDER BY s.id
+        """)
+    List<Seat> findForUpdate(@Param("seatIds") Collection<Long> seatIds,
+                             @Param("eventId") Long eventId);
 
 }
 

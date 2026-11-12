@@ -3,7 +3,9 @@ package io.github.themusicianone.ticketing_backend.common;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import io.github.themusicianone.ticketing_backend.seat.SeatNotAvailableException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -42,5 +44,16 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("errors", errors);
 
         return ResponseEntity.badRequest().body(problem);
+    }
+
+    @ExceptionHandler(SeatNotAvailableException.class)
+    ProblemDetail handleSeatNotAvailable(SeatNotAvailableException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ProblemDetail handleOptimisticLock(OptimisticLockingFailureException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "One or more seats are not available");
     }
 }

@@ -29,12 +29,14 @@ public class HoldService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final SeatRepository seatRepository;
+    private final SeatHoldStrategy seatHoldStrategy;
     public HoldService(HoldRepository holdRepository, EventRepository eventRepository, UserRepository userRepository, SeatRepository seatRepository
-    ) {
+    , SeatHoldStrategy seatHoldStrategy) {
         this.holdRepository = holdRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.seatRepository = seatRepository;
+        this.seatHoldStrategy = seatHoldStrategy;
     }
 
 
@@ -51,8 +53,8 @@ public class HoldService {
         if(seatIds.size() != request.seatIds().size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate seat IDs");
         }
-        long alreadyHeld = seatRepository.countByEvent_IdAndHold_User_IdAndHold_Status(
-                eventId, userId, HoldStatus.ACTIVE);
+        long alreadyHeld = seatRepository.countByEvent_IdAndHold_User_IdAndHold_StatusIn(
+                eventId, userId, List.of(HoldStatus.ACTIVE,HoldStatus.PAYMENT_PENDING));
 
         if (alreadyHeld + seatIds.size() > 6) {
             throw new ResponseStatusException(
@@ -64,11 +66,7 @@ public class HoldService {
         Hold hold = new Hold(user,event, Instant.now().plus(HOLD_DURATION));
         Hold holdSaved = holdRepository.save(hold);
 
-        int available_holds = seatRepository.holdSeats(holdSaved,eventId,seatIds,SeatStatus.HELD, SeatStatus.AVAILABLE);
-
-        if(available_holds != seatIds.size()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "One or more seats are not available");
-        }
+        seatHoldStrategy.holdSeats(holdSaved,eventId,seatIds);
 
         return HoldResponse.from(holdSaved, List.copyOf(seatIds));
 

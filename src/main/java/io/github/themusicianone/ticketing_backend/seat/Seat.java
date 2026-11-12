@@ -2,6 +2,8 @@ package io.github.themusicianone.ticketing_backend.seat;
 import io.github.themusicianone.ticketing_backend.event.Event;
 import io.github.themusicianone.ticketing_backend.hold.Hold;
 import jakarta.persistence.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 
 //id, event_id, section, row_label, seat_number, price_cents, status
@@ -72,6 +74,13 @@ public class Seat {
         return status;
     }
 
+    public void holdFor(Hold hold) {
+        if (status != SeatStatus.AVAILABLE) {
+            throw new SeatNotAvailableException();
+        }
+        this.status = SeatStatus.HELD;
+        this.hold = hold;
+    }
 
 
 

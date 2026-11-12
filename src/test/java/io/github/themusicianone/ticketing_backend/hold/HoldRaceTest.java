@@ -20,6 +20,7 @@ import io.github.themusicianone.ticketing_backend.user.User;
 import io.github.themusicianone.ticketing_backend.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,9 +37,15 @@ import org.springframework.test.web.servlet.client.EntityExchangeResult;
  * The database, not luck, must decide who wins: never two holds on one seat,
  * never a half-finished hold, and never a server error.
  */
-class HoldRaceTest extends IntegrationTest {
+abstract class HoldRaceTest extends IntegrationTest {
 
     private static final int CUSTOMERS = 200;
+
+    @Autowired
+    private SeatHoldStrategy seatHoldStrategy;
+
+    /** The strategy each subclass expects Spring to have injected. */
+    protected abstract Class<? extends SeatHoldStrategy> expectedStrategy();
 
     @Autowired
     private UserRepository userRepository;
@@ -57,6 +64,11 @@ class HoldRaceTest extends IntegrationTest {
     @BeforeEach
     void setUp() {
         adminToken = adminToken();
+    }
+
+    @Test
+    void usesTheExpectedStrategy() {
+        assertThat(seatHoldStrategy).isInstanceOf(expectedStrategy());
     }
 
     @RepeatedTest(5)
