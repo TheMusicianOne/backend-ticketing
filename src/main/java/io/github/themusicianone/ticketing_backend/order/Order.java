@@ -52,7 +52,7 @@ public class Order {
 
     }
 
-    public Order(User user, Hold hold, Event event, int totalCents, String idempotencyKey, Instant paymentDeadline) {
+    public Order(User user, Event event, Hold hold, int totalCents, String idempotencyKey, Instant paymentDeadline) {
         this.user = user;
         this.hold = hold;
         this.event = event;

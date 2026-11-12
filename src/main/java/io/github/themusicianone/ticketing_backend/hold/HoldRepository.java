@@ -50,4 +50,30 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
     int expireHolds(@Param("holdIds") Collection<Long> holdIds,
                     @Param("expired") HoldStatus expired,
                     @Param("active") HoldStatus active);
+
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        UPDATE Hold h
+        SET h.status = :to
+        WHERE h.id = :holdId AND h.status = :from
+        """)
+    int changeStatus(@Param("holdId") Long holdId,
+                     @Param("from") HoldStatus from,
+                     @Param("to") HoldStatus to);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        UPDATE Hold h
+        SET h.status = :paymentPending
+        WHERE h.id = :holdId
+          AND h.user.id = :userId
+          AND h.status = :active
+          AND h.expiresAt > :now
+        """)
+    int startPayment(@Param("holdId") Long holdId,
+                     @Param("userId") Long userId,
+                     @Param("active") HoldStatus active,
+                     @Param("paymentPending") HoldStatus paymentPending,
+                     @Param("now") Instant now);
 }

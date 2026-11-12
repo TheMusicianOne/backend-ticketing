@@ -81,5 +81,21 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     List<Seat> findForUpdate(@Param("seatIds") Collection<Long> seatIds,
                              @Param("eventId") Long eventId);
 
+
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+        UPDATE Seat s
+        SET s.status = :sold, s.version = s.version + 1
+        WHERE s.hold.id = :holdId AND s.status = :held
+        """)
+    int markSold(@Param("holdId") Long holdId,
+                 @Param("held") SeatStatus held,
+                 @Param("sold") SeatStatus sold);
+
+    List<Seat> findByHold_IdOrderById(Long holdId);
+
+    @Query("SELECT COALESCE(SUM(s.priceCents), 0) FROM Seat s WHERE s.hold.id = :holdId")
+    long totalPriceForHold(@Param("holdId") Long holdId);
 }
 
