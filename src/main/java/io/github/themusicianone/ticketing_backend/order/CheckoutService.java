@@ -1,6 +1,8 @@
 package io.github.themusicianone.ticketing_backend.order;
 
 import io.github.themusicianone.ticketing_backend.payment.PaymentGateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -9,7 +11,7 @@ import java.util.Optional;
 
 @Service
 public class CheckoutService {
-
+    private static final Logger log = LoggerFactory.getLogger(CheckoutService.class);
     // inject OrderService, OrderRepository, PaymentGateway
     private final PaymentGateway paymentGateway;
     private final OrderRepository orderRepository;
@@ -43,6 +45,7 @@ public class CheckoutService {
             payment = paymentGateway.createPayment(new PaymentGateway.PaymentRequest(
                     "order-" + order.getId(), order.getTotalCents(), "Order " + order.getId()));
         } catch (RuntimeException e) {
+            log.warn("Payment provider unavailable for order {}: {}", order.getId(), e.toString());
             orderService.failOrder(order.getId(), OrderStatus.FAILED);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Payment provider unavailable, please try again");

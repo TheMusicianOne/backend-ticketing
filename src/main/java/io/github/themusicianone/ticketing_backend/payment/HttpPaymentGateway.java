@@ -1,17 +1,24 @@
 package io.github.themusicianone.ticketing_backend.payment;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.resilience.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+
+import java.io.IOException;
 
 @Component
 @ConditionalOnProperty(name = "app.payments.provider", havingValue = "http")
 class HttpPaymentGateway implements PaymentGateway {
-
+    private static final Logger log = LoggerFactory.getLogger(HttpPaymentGateway.class);
     private final RestClient restClient;
     private final PaymentProperties properties;
 
@@ -30,7 +37,17 @@ class HttpPaymentGateway implements PaymentGateway {
     }
 
     @Override
+    @Retryable(
+            includes = {ResourceAccessException.class, HttpServerErrorException.class, IOException.class},
+            maxRetries =2,
+            delay=200,
+            multiplier = 2.0,
+            jitter = 50,
+            maxDelay = 2000
+
+    )
     public CreatedPayment createPayment(PaymentRequest request) {
+        //log.info("Calling payment provider for {}", request.idempotencyKey());
         ProviderPayment payment = restClient.post()
                 .uri("/v1/payments")
                 .header("Idempotency-Key", request.idempotencyKey())
