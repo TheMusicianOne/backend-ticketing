@@ -9,6 +9,23 @@ services:
       - "5432:5432"           # lets your app reach the database
     volumes:
       - postgres-data:/var/lib/postgresql/data   # keeps data after restarts
-
+  fake-payment-provider:
+    build: ./fake-payment-provider
+    ports:
+      - "8081:8081"
+    environment:
+      FAKE_PSP_API_KEY: test_fake_psp_key
+      FAKE_PSP_WEBHOOK_SECRET: whsec_local_dev_secret
+      FAKE_PSP_PUBLIC_BASE_URL: http://localhost:8081
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 volumes:
   postgres-data:
+
+
+
