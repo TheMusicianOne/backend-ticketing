@@ -64,3 +64,23 @@ def cancel_payment(payment_id: str, background: BackgroundTasks, store: PaymentS
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only open payments can be canceled")
 
+@router.post("/{payment_id}/refunds", response_model=Payment)
+def refund_payment(payment_id: str,
+                    background: BackgroundTasks,
+                    store: PaymentStore = Depends(get_store),
+                    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=100)):
+
+    refunded = store.transition(payment_id, {PaymentStatus.PAID}, PaymentStatus.REFUNDED)
+    if refunded is not None:
+        if refunded.webhook_url:
+            background.add_task(deliver,refunded.webhook_url, build_event(refunded))
+        return refunded
+    payment = store.get(payment_id)
+    if payment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+    elif payment.status == PaymentStatus.REFUNDED:
+        return payment
+    else:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Payment not paid")
+
+

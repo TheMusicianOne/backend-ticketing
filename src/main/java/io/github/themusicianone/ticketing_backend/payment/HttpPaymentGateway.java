@@ -93,4 +93,13 @@ class HttpPaymentGateway implements PaymentGateway {
             return false;
         }
     }
+
+    @Override
+    public void refund(String paymentId, String idempotencyKey){
+        restClient.post()
+                .uri("/v1/payments/{id}/refunds", paymentId)
+                .header("Idempotency-Key", idempotencyKey)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }

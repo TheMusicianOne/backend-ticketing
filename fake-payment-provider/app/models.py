@@ -16,6 +16,7 @@ class PaymentStatus(str, Enum):
     FAILED = "failed"
     CANCELED = "canceled"
     EXPIRED = "expired"
+    REFUNDED = "refunded"
 
 
 class CreatePaymentRequest(CamelModel):

@@ -32,4 +32,9 @@ public class StubPaymentGateway implements PaymentGateway {
     public void setStatus(String paymentId, ProviderStatus status) {
         statuses.put(paymentId, status);
     }
+
+    @Override
+    public void refund(String paymentId, String idempotencyKey){
+        statuses.put(paymentId, ProviderStatus.REFUNDED);
+    }
 }

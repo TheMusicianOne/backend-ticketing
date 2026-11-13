@@ -48,6 +48,10 @@ public class Order {
     @UpdateTimestamp
     private Instant updatedAt;
 
+    private Instant refundRequiredAt;
+
+    private Instant refundedAt;
+
     protected Order() {
 
     }
@@ -105,7 +109,8 @@ public class Order {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
-
+    public Instant getRefundRequiredAt() {return refundRequiredAt;}
+    public Instant getRefundedAt() {return refundedAt;}
 
 
 
