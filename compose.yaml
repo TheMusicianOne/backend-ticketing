@@ -4,9 +4,9 @@ services:
     environment:
       POSTGRES_DB: ticketing
       POSTGRES_USER: ticketing
-      POSTGRES_PASSWORD: ticketing
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ticketing}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -20,9 +20,9 @@ services:
     ports:
       - "8081:8081"
     environment:
-      FAKE_PSP_API_KEY: test_fake_psp_key
-      FAKE_PSP_WEBHOOK_SECRET: whsec_local_dev_secret
-      FAKE_PSP_PUBLIC_BASE_URL: http://localhost:8081
+      FAKE_PSP_API_KEY: ${PAYMENTS_API_KEY:-test_fake_psp_key}
+      FAKE_PSP_WEBHOOK_SECRET: ${PAYMENTS_WEBHOOK_SECRET:-whsec_local_dev_secret}
+      FAKE_PSP_PUBLIC_BASE_URL: ${PSP_PUBLIC_BASE_URL:-http://localhost:8081}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -39,12 +39,16 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ticketing
       SPRING_DATASOURCE_USERNAME: ticketing
-      SPRING_DATASOURCE_PASSWORD: ticketing
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ticketing}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-change-me-it-must-be-at-least-32-bytes}
       APP_PAYMENTS_PROVIDER: http
       APP_PAYMENTS_BASEURL: http://fake-payment-provider:8081
       APP_PAYMENTS_WEBHOOKURL: http://ticketing-backend:8080/webhooks/payments
-      ADMIN_EMAIL: admin@example.com
-      ADMIN_PASSWORD: local-admin-password
+      PAYMENTS_API_KEY: ${PAYMENTS_API_KEY:-test_fake_psp_key}
+      PAYMENTS_WEBHOOK_SECRET: ${PAYMENTS_WEBHOOK_SECRET:-whsec_local_dev_secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-local-admin-password}
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
     depends_on:
       postgres:
         condition: service_healthy
