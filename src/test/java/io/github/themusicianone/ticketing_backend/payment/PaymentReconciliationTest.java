@@ -198,6 +198,43 @@ class PaymentReconciliationTest extends OrderTestSupport {
         assertThat(orderStatus(order.orderId())).isEqualTo("CONFIRMED");
         assertThat(ticketsForOrder(order.orderId())).isEqualTo(3);
     }
+    // ---- Orders stuck without a payment ----------------------------------------------
+
+    @Test
+    void orderStuckWithoutPaymentIsLeftAloneBeforeItsDeadline() {
+        PendingOrder order = stuckOrder(2);
+
+        reconciliationService.reconcile(later(AFTER_GRACE));
+
+        // It might still be a checkout that's just about to attach its payment
+        assertThat(orderStatus(order.orderId())).isEqualTo("PENDING");
+        assertThat(holdStatus(holdIdOf(order))).isEqualTo("PAYMENT_PENDING");
+        assertThat(seatStatuses(order.seatIds())).containsOnly("HELD");
+    }
+
+    @Test
+    void orderStuckWithoutPaymentIsExpiredAfterItsDeadline() {
+        PendingOrder order = stuckOrder(2);
+
+        int resolved = reconciliationService.reconcile(later(AFTER_DEADLINE));
+
+        assertThat(resolved).isEqualTo(1);
+        assertThat(orderStatus(order.orderId())).isEqualTo("EXPIRED");
+        assertThat(holdStatus(holdIdOf(order))).isEqualTo("RELEASED");
+        assertThat(seatStatuses(order.seatIds())).containsOnly("AVAILABLE");
+    }
+
+    @Test
+    void seatsFromAStuckOrderCanBeBoughtAgain() {
+        PendingOrder order = stuckOrder(1);
+
+        reconciliationService.reconcile(later(AFTER_DEADLINE));
+
+        Long eventId = jdbc.queryForObject(
+                "SELECT event_id FROM orders WHERE id = ?", Long.class, order.orderId());
+        postHold(eventId, customerToken(), order.seatIds())
+                .expectStatus().isCreated();
+    }
 
     // ---- Helpers --------------------------------------------------------------------
 
@@ -218,4 +255,21 @@ class PaymentReconciliationTest extends OrderTestSupport {
     private static Instant later(Duration duration) {
         return Instant.now().plus(duration);
     }
+    /**
+     * An order as it would be if the server crashed during checkout, after the order
+     * was created but before the provider's payment was attached to it.
+     */
+    private PendingOrder stuckOrder(int seatCount) {
+        PendingOrder order = pendingOrder(seatCount);
+        jdbc.update("UPDATE orders SET payment_id = NULL, checkout_url = NULL WHERE id = ?",
+                order.orderId());
+        return new PendingOrder(order.orderId(), null, order.seatIds());
+    }
+
+    private Long holdIdOf(PendingOrder order) {
+        return jdbc.queryForObject(
+                "SELECT hold_id FROM orders WHERE id = ?", Long.class, order.orderId());
+    }
+
+
 }

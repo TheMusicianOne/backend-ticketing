@@ -46,6 +46,16 @@ public class PaymentReconciliationService {
                 log.warn("Could not reconcile order {}: {}", order.getId(), e.getMessage());
             }
         }
+        List<Order> ordersWithoutPayment = orderRepository.findPendingWithoutPayment(OrderStatus.PENDING,now,PageRequest.of(0, BATCH_SIZE));
+        for (Order order : ordersWithoutPayment) {
+            try{
+                log.warn("Expiring order {}: checkout never received a payment from the provider", order.getId());
+                paymentOutcomeService.apply(order.getId(),ProviderStatus.EXPIRED);
+                resolved++;
+            } catch (RuntimeException e) {
+                log.warn("Could not resolve order without payment {}: {}", order.getId(), e.getMessage());
+            }
+        }
         return resolved;
     }
 

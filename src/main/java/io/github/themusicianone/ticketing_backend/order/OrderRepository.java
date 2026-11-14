@@ -71,6 +71,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     int markRefunded(@Param("orderId") Long orderId, @Param("now") Instant now, @Param("refunded") OrderStatus refunded);
 
 
+    @Query(
+            """
+            SELECT o FROM Order o
+            WHERE o.status = :pending AND o.paymentDeadline <= :now AND o.paymentId IS NULL
+            ORDER BY o.createdAt ASC
+            """
+    )
+    List<Order> findPendingWithoutPayment(@Param("pending") OrderStatus pending,
+                                          @Param("now") Instant now,
+                                          Pageable pageable);
+
+
+
+
 
 
 
