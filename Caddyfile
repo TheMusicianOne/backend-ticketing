@@ -1,0 +1,11 @@
+{$API_HOST} {
+	# Metrics are for Prometheus inside Docker only, never the internet
+	@metrics path /actuator/prometheus*
+	respond @metrics 404
+
+	reverse_proxy ticketing-backend:8080
+}
+
+{$PAY_HOST} {
+	reverse_proxy fake-payment-provider:8081
+}

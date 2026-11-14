@@ -54,6 +54,23 @@ services:
         condition: service_healthy
       fake-payment-provider:
         condition: service_healthy
-
+  caddy:
+    image: caddy:2
+    profiles: [ "full" ]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST:-api.localhost}
+      PAY_HOST: ${PAY_HOST:-pay.localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - ticketing-backend
+      - fake-payment-provider
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:
