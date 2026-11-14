@@ -1,6 +1,7 @@
 package io.github.themusicianone.ticketing_backend.order;
 
 
+import io.github.themusicianone.ticketing_backend.common.PageResponse;
 import io.github.themusicianone.ticketing_backend.hold.Hold;
 import io.github.themusicianone.ticketing_backend.hold.HoldRepository;
 import io.github.themusicianone.ticketing_backend.seat.SeatStatus;
@@ -8,6 +9,8 @@ import io.github.themusicianone.ticketing_backend.hold.HoldStatus;
 import io.github.themusicianone.ticketing_backend.seat.Seat;
 import io.github.themusicianone.ticketing_backend.seat.SeatRepository;
 import io.github.themusicianone.ticketing_backend.user.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+
 
 @Service
 public class OrderService {
@@ -132,6 +136,36 @@ public class OrderService {
         Order order = orderRepository.findById(orderId).orElseThrow();
         order.attachPayment(paymentId, checkoutUrl);
         return order;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<OrderResponse> findForUser(Long orderId, Long userId){
+        Optional<Order> opOrder = orderRepository.findByIdAndUser_Id(orderId,userId);
+        if(!opOrder.isPresent()) {
+            return Optional.empty();
+        }
+        Order order = opOrder.get();
+        return Optional.of(OrderResponse.from(order));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> findAllForUser(Long userId, Pageable pageable) {
+        Page<Order> orders = orderRepository.findByUser_Id(userId, pageable);
+        return PageResponse.from(orders.map(order -> OrderResponse.from(order)));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<List<TicketResponse>> findTicketsForUser(Long orderId, Long userId){
+        Optional<Order> opOrder = orderRepository.findByIdAndUser_Id(orderId,userId);
+        if(!opOrder.isPresent()) {
+            return Optional.empty();
+        }
+        //Order order = opOrder.get();
+        List<Ticket> tickets = ticketRepository.findWithSeatsByOrderId(orderId);
+
+        return Optional.of(tickets.stream()
+                .map(TicketResponse::from)
+                .toList());
     }
 
 
