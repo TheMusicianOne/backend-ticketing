@@ -22,7 +22,7 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/events/**", "/venues/**").permitAll()
                         .requestMatchers("/actuator/health", "/error",
-                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/payments").permitAll()
                         .requestMatchers(HttpMethod.POST, "/events", "/venues", "/events/*/seats/**")
                         .hasRole("ADMIN")
