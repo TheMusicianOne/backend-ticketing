@@ -54,3 +54,40 @@ jobs:
 
       - name: Check the Docker image builds
         run: docker build .
+  deploy:
+    name: Deploy to server
+    needs: [ ticketing-backend, fake-payment-provider ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key deploy@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+            cd ~/backend-ticketing
+            git pull --ff-only
+            docker compose --profile full up -d --build
+            docker image prune -f
+          EOF
+
+      - name: Check the deployed app is healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS https://api.2-31-202-145.sslip.io/actuator/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "The app did not become healthy in time"
+          exit 1
