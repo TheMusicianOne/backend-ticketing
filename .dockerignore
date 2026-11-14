@@ -1,0 +1,5 @@
+build
+.gradle
+.idea
+fake-payment-provider
+*.md

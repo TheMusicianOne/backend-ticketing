@@ -1,14 +1,20 @@
 services:
-  postgres:                   # a name for this container
-    image: postgres:17        # the PostgreSQL version to run
-    environment:              # creates the database and login on first start
+  postgres:
+    image: postgres:17
+    environment:
       POSTGRES_DB: ticketing
       POSTGRES_USER: ticketing
       POSTGRES_PASSWORD: ticketing
     ports:
-      - "5432:5432"           # lets your app reach the database
+      - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data   # keeps data after restarts
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketing -d ticketing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   fake-payment-provider:
     build: ./fake-payment-provider
     ports:
@@ -20,12 +26,30 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')" ]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
       interval: 10s
       timeout: 3s
       retries: 3
+
+  ticketing-backend:
+    build: .
+    profiles: ["full"]
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ticketing
+      SPRING_DATASOURCE_USERNAME: ticketing
+      SPRING_DATASOURCE_PASSWORD: ticketing
+      APP_PAYMENTS_PROVIDER: http
+      APP_PAYMENTS_BASEURL: http://fake-payment-provider:8081
+      APP_PAYMENTS_WEBHOOKURL: http://ticketing-backend:8080/webhooks/payments
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: local-admin-password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fake-payment-provider:
+        condition: service_healthy
+
 volumes:
   postgres-data:
-
-
-
