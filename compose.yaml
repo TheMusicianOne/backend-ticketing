@@ -70,7 +70,21 @@ services:
     depends_on:
       - ticketing-backend
       - fake-payment-provider
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["full"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - ticketing-backend
 volumes:
   postgres-data:
   caddy-data:
   caddy-config:
+  prometheus-data:
