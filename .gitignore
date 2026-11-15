@@ -49,3 +49,5 @@ __pycache__/
 *.pyc
 .pytest_cache/
 load-tests/src/gatling/resources/tokens.csv
+
+load-tests/src/gatling/resources/tokens*.csv

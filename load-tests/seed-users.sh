@@ -8,7 +8,7 @@ BASE_URL="${1:-http://localhost:8080}"
 COUNT="${2:-200}"
 PARALLEL="${3:-10}"
 PASSWORD="load-test-password"
-OUTPUT="$(dirname "$0")/src/gatling/resources/tokens.csv"
+OUTPUT="$(dirname "$0")/src/gatling/resources/${4:-tokens-local.csv}"
 
 mkdir -p "$(dirname "$OUTPUT")"
 

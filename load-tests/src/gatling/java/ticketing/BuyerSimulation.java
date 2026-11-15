@@ -16,6 +16,7 @@ import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Session;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpProtocolBuilder;
+import io.gatling.javaapi.core.OpenInjectionStep;
 
 /**
  * A fan who holds seats, checks out, and then pays, declines, or walks away
@@ -39,9 +40,18 @@ public class BuyerSimulation extends Simulation {
     private static final int MAX_ATTEMPTS = 3;
     private static final int MAX_STATUS_CHECKS = 10;
 
+    private static final int WARMUP_SECONDS = Integer.getInteger("warmupSeconds", 0);
+    private static final int STEPS = Integer.getInteger("steps", 0);
+    private static final double STEP_USERS_PER_SEC = Double.parseDouble(System.getProperty("stepUsersPerSec", "2"));
+    private static final int STEP_SECONDS = Integer.getInteger("stepSeconds", 60);
+
+    private static final int PAGE_SIZE = 100;
+
     // ---- Test data and protocol ----
 
-    private final FeederBuilder<String> fans = csv("tokens.csv").circular();
+    private static final String TOKENS_FILE = System.getProperty("tokensFile", "tokens-local.csv");
+
+    private final FeederBuilder<String> fans = csv(TOKENS_FILE).circular();
 
     private final HttpProtocolBuilder httpProtocol = http
             .baseUrl(BASE_URL)
@@ -50,9 +60,31 @@ public class BuyerSimulation extends Simulation {
 
     // ---- Part 1: getting seats ----
 
+    /**
+     * How many seats are left, and which page of them this fan will look at.
+     * Like opening a seat map and scrolling to some part of it, instead of everyone
+     * staring at the same first 100 seats. In a rush (pickFromFirst > 0), everyone
+     * deliberately goes for the first page.
+     */
+    private static ChainBuilder choosePage() {
+        if (PICK_FROM_FIRST > 0) {
+            return exec(session -> session.set("seatPage", 0));
+        }
+        return exec(http("Seat overview")
+                .get("/events/" + EVENT_ID + "/seats?status=AVAILABLE&size=1")
+                .check(status().is(200))
+                .check(jsonPath("$.totalElements").ofInt().saveAs("availableSeats")))
+                .exec(session -> {
+                    int available = session.getInt("availableSeats");
+                    int pages = Math.max(1, (available + PAGE_SIZE - 1) / PAGE_SIZE);
+                    return session.set("seatPage", ThreadLocalRandom.current().nextInt(pages));
+                });
+    }
+
+    /** Look at one page of available seats. */
     private static ChainBuilder lookAtSeats() {
         return exec(http("Available seats")
-                .get("/events/" + EVENT_ID + "/seats?status=AVAILABLE&size=100")
+                .get("/events/" + EVENT_ID + "/seats?status=AVAILABLE&size=" + PAGE_SIZE + "&page=#{seatPage}")
                 .check(status().is(200))
                 .check(jsonPath("$.content[*].id").ofLong().findAll().optional().saveAs("seatIds")));
     }
@@ -90,6 +122,8 @@ public class BuyerSimulation extends Simulation {
                         && counter(session, "attempt") < MAX_ATTEMPTS, "attempt")
                 .on(
                         exec(session -> session.remove("seatIds"))
+                                .exec(choosePage())
+                                .exitHereIfFailed()
                                 .exec(lookAtSeats())
                                 .pause(Duration.ofMillis(500), Duration.ofSeconds(2))
                                 .exec(pickSeats())
@@ -162,6 +196,7 @@ public class BuyerSimulation extends Simulation {
             .doIf(session -> session.getBoolean("held")).then(
                     pause(Duration.ofSeconds(1), Duration.ofSeconds(3))
                             .exec(checkOut())
+                            .exitHereIfFailed()
                             .pause(Duration.ofSeconds(2), Duration.ofSeconds(5))
                             .exec(pay())
             );
@@ -179,8 +214,26 @@ public class BuyerSimulation extends Simulation {
             throw new IllegalArgumentException("Pass the event to test with -DeventId=...");
         }
 
-        setUp(buyers.injectOpen(
-                constantUsersPerSec(USERS_PER_SEC).during(Duration.ofSeconds(DURATION_SECONDS))))
+        List<OpenInjectionStep> load = new ArrayList<>();
+
+// A gentle start, so the JVM warms up before anything is measured
+        if (WARMUP_SECONDS > 0) {
+            load.add(constantUsersPerSec(1).during(Duration.ofSeconds(WARMUP_SECONDS)));
+        }
+
+        if (STEPS > 0) {
+            // Stress test: e.g. 4, 8, 12, ... fans per second, each level held for STEP_SECONDS
+            load.add(incrementUsersPerSec(STEP_USERS_PER_SEC)
+                    .times(STEPS)
+                    .eachLevelLasting(Duration.ofSeconds(STEP_SECONDS))
+                    .separatedByRampsLasting(Duration.ofSeconds(10))
+                    .startingFrom(Double.parseDouble(System.getProperty("startUsersPerSec", String.valueOf(STEP_USERS_PER_SEC)))));
+        } else {
+            // Steady load, as in the baseline
+            load.add(constantUsersPerSec(USERS_PER_SEC).during(Duration.ofSeconds(DURATION_SECONDS)));
+        }
+
+        setUp(buyers.injectOpen(load))
                 .protocols(httpProtocol)
                 .assertions(global().failedRequests().percent().lt(1.0));
     }
