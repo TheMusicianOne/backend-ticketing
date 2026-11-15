@@ -48,3 +48,4 @@ fake-payment-provider/.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+load-tests/src/gatling/resources/tokens.csv

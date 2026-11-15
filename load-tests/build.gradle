@@ -1,0 +1,8 @@
+plugins {
+    id 'java'
+    id 'io.gatling.gradle' version '3.14.9.4'
+}
+
+repositories {
+    mavenCentral()
+}
